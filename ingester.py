@@ -31,10 +31,12 @@ def ingest(file_path) -> list[domain.Color]:
     return colors
 
 if __name__ == "__main__":
-    file_path = r"C:\Users\baam1\Desktop\arco.mp4"
-    
+    file_path = r"D:\Videos\Movies\[MTBB] Mushoku Tensei (BD 1080p)\[MTBB] Mushoku Tensei - 01v3 [0C3C916A].mkv"
+    #file_path = r"D:\Videos\Movies\Black Swan (2010) [1080p] [BluRay] [5.1] [YTS.MX]\Black.Swan.2010.1080p.BluRay.x264.AAC5.1-[YTS.MX].mp4"
+        
     data : list[domain.Color] = ingest(file_path)
 
-    img = render.render(data, 2000, 2000)
+    #img = render.render(data, 1920, 1080)
+    img = render.render_force_max_lines(data, 5, 5000)
 
     img.show()

@@ -1,68 +1,61 @@
 import database
 from domain import Color, Source, SourceKind, SourceFrame, SourceService
 import render
+import ingester
 
 database.update_schema()
 
-data = [
-    Color(255, 0, 255),   
-    Color(100, 0, 255),   
-    Color(0, 0, 255),     
-    Color(255, 0, 0),     
-    Color(255, 0, 100),   
-    Color(255, 50, 150),  
-    Color(255, 100, 0),   
-    Color(255, 200, 0),   
-    Color(255, 255, 0),   
-    Color(150, 255, 0),   
-    Color(0, 255, 0),     
-    Color(0, 255, 100),   
-    Color(0, 255, 255),   
-    Color(0, 150, 255),   
-    Color(100, 100, 255), 
-    Color(150, 0, 255),   
-    Color(255, 0, 200),   
-    Color(255, 100, 100), 
-    Color(255, 150, 50),  
-    Color(200, 255, 0),   
-    Color(0, 200, 150),   
-    Color(0, 100, 200),   
-    Color(100, 0, 150),   
-    Color(150, 0, 100),   
-    Color(255, 255, 255), 
-    Color(200, 200, 200), 
-    Color(128, 128, 128), 
-    Color(50, 50, 50),    
-    Color(0, 0, 0),       
-]
+def create_source_from_file(file_path : str) -> Source:
+    conn = database.create_connection()
 
-conn = database.create_connection()
+    s = Source()
 
-s = Source()
+    s.sha512 = "s3"
+    s.imdb_id = "3"
+    s.metadata_name = "TEST_SOURCE"
+    s.kind = SourceKind.UNKNOWN
 
-s.sha512 = ""
-s.imdb_id = ""
-s.metadata_name = "TEST_SOURCE"
-s.kind = SourceKind.UNKNOWN
+    s.id = SourceService.create_source(conn, s, False)
 
-s.id = SourceService.create_source(conn, s, False)
+    data = ingester.ingest(file_path)
 
-for i,d in enumerate(data):
-    sf = SourceFrame()
+    for i,d in enumerate(data):
+        sf = SourceFrame()
 
-    sf.source_id = s.id
-    sf.color = d
-    sf.frame_index = i
+        sf.source_id = s.id
+        sf.color = d
+        sf.frame_index = i
 
-    sf.id = SourceService.create_source_frame(conn, s.id, sf, False)
+        sf.id = SourceService.create_source_frame(conn, s.id, sf, False)
 
-fames = SourceService.get_source_frames(conn, s.id)
+    conn.commit()
 
-data = []
+    return s
 
-for f in fames:
-    data.append(f.color)
+def render_source(source_id : int):
+    conn = database.create_connection()
+    
+    fames = SourceService.get_source_frames(conn, source_id)
 
-img = render.render(data, 200, 200)
+    data = []
 
-img.show()
+    for f in fames:
+        data.append(f.color)
+
+    img = render.render_force_max_lines(data, 900, 5, 1000)
+
+    img.show()
+
+if __name__ == "__main__":
+    #file_path = r"D:\Videos\Movies\[MTBB] Mushoku Tensei (BD 1080p)\[MTBB] Mushoku Tensei - 01v3 [0C3C916A].mkv"
+    #file_path = r"D:\Videos\Movies\Black Swan (2010) [1080p] [BluRay] [5.1] [YTS.MX]\Black.Swan.2010.1080p.BluRay.x264.AAC5.1-[YTS.MX].mp4"
+    #file_path = r"D:\Videos\Movies\Eternal Sunshine of the Spotless Mind (2004) [1080p]\Eternal.Sunshine.of.the.Spotless.Mind.2004.1080p.BrRip.x264.BOKUTOX.YIFY.mp4"
+    #file_path = r"D:\Videos\Movies\Arco (2025) [HYBRID] [1080p] [BluRay] [5.1] [YTS.BZ]\Arco.2025.HYBRID.1080p.BluRay.x264.AAC5.1-[YTS.BZ].mp4"
+            
+    #s = create_source_from_file(file_path)
+    
+    #print(f"source_id: {s.id}")
+
+    #render_source(s.id)
+
+    render_source(9)

@@ -124,3 +124,13 @@ class SourceService:
             frames.append(sf)
 
         return frames
+
+    @classmethod
+    def do_source_exists(cls, conn : sqlite3.Connection, sha512 : str, imdb_id : str):
+        cur = conn.cursor()
+
+        sql = "SELECT id FROM Source WHERE sha512 = ? OR imdb_id = ?;"
+
+        cur.execute(sql, [sha512, imdb_id])
+
+        return cur.rowcount > 0
