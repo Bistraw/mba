@@ -1,5 +1,6 @@
 from PIL import Image, ImageDraw
-from domain import Color
+from domain import Color, SourceService, SourceFrame, Source
+import database
 
 def get_color_avg(data : list[Color]):
     n = len(data)
@@ -105,12 +106,24 @@ def render(data : list[Color], height : int = 200, strip_width : int = 1, color_
     
     return img
 
-def render_force_max_lines(data : list[Color], height : int, strip_width : int, max_strips : int):
+def render_force_max_lines(data : list[Color], height : int, strip_width : int, max_strips : int) -> Image:
     n = len(data)
 
     colors_per_strip = int(n / max_strips)
 
     return render(data, height, strip_width, colors_per_strip)
+
+def render_force_max_lines_force_size(data : list[Color], height : int, strip_width : int, max_strips : int, width : int) -> Image:
+    n = len(data)
+
+    colors_per_strip = int(n / max_strips)
+
+    img = render(data, height, strip_width, colors_per_strip)
+
+    if img.width > width:
+        img = img.resize((width, height))
+
+    return img
 
 def test_render():
     
@@ -151,5 +164,22 @@ def test_render():
 
     img.show()
 
+def render_source(source_id : int):
+    conn = database.create_connection()
+    
+    fames = SourceService.get_source_frames(conn, source_id)
+
+    data = []
+
+    for f in fames:
+        data.append(f.color)
+
+    img = render.render_force_max_lines(data, 900, 5, 1000)
+
+    img.show()
+
 if __name__ == "__main__":  
-    test_render()
+    #test_render()
+    database.update_schema()
+    
+    render_source(15)

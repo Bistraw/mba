@@ -1,5 +1,7 @@
 import sqlite3
 
+import database
+
 class Color:
     def __init__(self, r = 255, g = 255, b = 255):
         self.r = r
@@ -133,4 +135,16 @@ class SourceService:
 
         cur.execute(sql, [sha512, imdb_id])
 
-        return cur.rowcount > 0
+        rows = cur.fetchall()
+        
+        return len(rows) > 0
+
+if __name__ == "__main__":
+    conn = database.create_connection()
+
+    sha512 = "a1eade7f53a2de16eac29687edaa5512051fd7c1e4bd18baccf5d8d656b92e81db3a8675fd2fc4dc1f24e6c12534a566a44c6cdbbb301bdda62859e93d44ed00"
+    imdb_id = "tt1488353"
+
+    r = SourceService.do_source_exists(conn, sha512, imdb_id)
+
+    print(f"source exists: {r}")

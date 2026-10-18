@@ -6,8 +6,35 @@ import os
 import hash
 import ingester
 
+def create_source_from_file(file_path : str) -> Source:
+    conn = database.create_connection()
+
+    s = Source()
+
+    s.sha512 = "s3"
+    s.imdb_id = "3"
+    s.metadata_name = "TEST_SOURCE"
+    s.kind = SourceKind.UNKNOWN
+
+    s.id = SourceService.create_source(conn, s, False)
+
+    data = ingester.ingest(file_path)
+
+    for i,d in enumerate(data):
+        sf = SourceFrame()
+
+        sf.source_id = s.id
+        sf.color = d
+        sf.frame_index = i
+
+        sf.id = SourceService.create_source_frame(conn, s.id, sf, False)
+
+    conn.commit()
+
+    return s
+
 def feed_jellyfin_items():
-    url = f"http://localhost:8096/items?apikey={environment.JELLY_APIKEY}&recursive=true&fields=ProviderIds,Path"
+    url = f"http://localhost:8096/items?apikey={environment.JELLY_APIKEY}&recursive=true&hasImdbId=true&includeItemTypes=Movie&fields=ProviderIds,Path"
 
     response = requests.get(url)
 
@@ -61,11 +88,15 @@ def feed_jellyfin_items():
             if not os.path.exists(s.path):
                 print(f"File does not exist: {s.path}")
                 continue
+
+            if SourceService.do_source_exists(conn, "", s.imdb_id):   
+                print(f"source already exists, imdb_id matched: {s.imdb_id}")
+                continue
             
             s.sha512 = hash.get_audio_hash_sha512(s.path)
 
-            if SourceService.do_source_exists(conn, s.sha512, s.imdb_id):   
-                print(f"Source already exists: {s.imdb_id} - {s.path}")
+            if SourceService.do_source_exists(conn, s.sha512, ""):   
+                print(f"source already exists, hash matched: {s.sha512}")
                 continue
 
             s.id = SourceService.create_source(conn, s, False)
@@ -92,4 +123,12 @@ def feed_jellyfin_items():
             print(f"error processing item, exception: {repr(e)}")
 
 if __name__ == "__main__":
+    #file_path = r"D:\Videos\Movies\[MTBB] Mushoku Tensei (BD 1080p)\[MTBB] Mushoku Tensei - 01v3 [0C3C916A].mkv"
+    #file_path = r"D:\Videos\Movies\Black Swan (2010) [1080p] [BluRay] [5.1] [YTS.MX]\Black.Swan.2010.1080p.BluRay.x264.AAC5.1-[YTS.MX].mp4"
+    #file_path = r"D:\Videos\Movies\Eternal Sunshine of the Spotless Mind (2004) [1080p]\Eternal.Sunshine.of.the.Spotless.Mind.2004.1080p.BrRip.x264.BOKUTOX.YIFY.mp4"
+    #file_path = r"D:\Videos\Movies\Arco (2025) [HYBRID] [1080p] [BluRay] [5.1] [YTS.BZ]\Arco.2025.HYBRID.1080p.BluRay.x264.AAC5.1-[YTS.BZ].mp4"            
+    #s = create_source_from_file(file_path)
+    #print(f"source_id: {s.id}")
+    #render_source(s.id)
+
     feed_jellyfin_items()
