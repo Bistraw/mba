@@ -18,6 +18,9 @@ def api_get_source_render(source_id):
     width = request.args.get('width', default=1000, type=int)
     strip_width = request.args.get('strip_width', default=5, type=int)
     max_strips = request.args.get('max_strips', default=1000, type=int)
+    kind = request.args.get('kind', default=0, type=int) # gotta add an enum for the render kind... someone do that latter
+    radius = request.args.get('radius', default=400, type=int)
+    radius_inner = request.args.get('radius_inner', default=20, type=int)
 
     conn = database.create_connection()
     
@@ -28,7 +31,10 @@ def api_get_source_render(source_id):
     for f in frames:
         data.append(f.color)
 
-    img : Image = render.render_force_max_lines_force_size(data, height, strip_width, max_strips, width)
+    if kind == 0:
+        img : Image = render.render_force_max_lines_force_size(data, height, strip_width, max_strips, width)
+    else:
+        img : Image = render.render_circle(data, radius, radius_inner, max_strips, width, height)
     
     img_io = io.BytesIO()
     
@@ -57,12 +63,15 @@ def get_source_render(source_id):
     width = request.args.get('width', default=1000, type=int)
     strip_width = request.args.get('strip_width', default=5, type=int)
     max_strips = request.args.get('max_strips', default=1000, type=int)
+    kind = request.args.get('kind', default=0, type=int) # gotta add an enum for the render kind... someone do that latter
+    radius = request.args.get('radius', default=400, type=int)
+    radius_inner = request.args.get('radius_inner', default=20, type=int)
 
     conn = database.create_connection()
     source = SourceService.get_source_by_id(conn, source_id)
     frames = SourceService.get_source_frames(conn, source_id)
 
-    return render_template('source_render.html', source=source, frames=frames, height=height, width=width, strip_width=strip_width, max_strips=max_strips)
+    return render_template('source_render.html', source=source, frames=frames, height=height, width=width, strip_width=strip_width, max_strips=max_strips, kind=kind, radius=radius, radius_inner=radius_inner)
 
 @app.route('/static/<path:filename>')
 def static_css(filename):

@@ -26,7 +26,7 @@
         </div>
     </div>
 
-    <form class="card" onsubmit="event.preventDefault(); render();">
+    <form class="card" autocomplete="off" onsubmit="event.preventDefault(); render();">
         <div class="card-header">
             <span>parameters</span>
         </div>
@@ -42,6 +42,15 @@
             <input  type="number" id="strip_width" value="{{ strip_width }}" min="1" max="100"/>
             <label for="max_strips">max_strips:</label>
             <input  type="number" id="max_strips" value="{{ max_strips }}" min="1" max="10000"/>
+            <label for="kind">kind:</label>
+            <select id="kind" value="{{kind}}">
+                <option value="0">line</option>
+                <option value="1">circle</option>
+            </select>
+            <label for="radius">radius:</label>
+            <input  type="number" id="radius" value="{{ radius }}" min="1" max="10000"/>
+            <label for="radius">inner radius:</label>
+            <input  type="number" id="radius_inner" value="{{ radius_inner }}" min="1" max="10000"/>
 
             <input type="submit" value="render">
         </div>
@@ -58,11 +67,11 @@
             <a onclick="zoomout()" href="#">zoom-out</a>
             <span id="mb-zoom-lbl" style="color: #777; font-size: lighter"> <i> (1x)</i></span>
             
-            <a id="download-button" style="float: right" href="/api/source/{{ source.id }}/render?height={{height}}&width={{width}}&strip_width={{strip_width}}&max_strips={{max_strips}}" download="source_render.png">download</a>
+            <a id="download-button" style="float: right" href="/api/source/{{ source.id }}/render?height={{height}}&width={{width}}&strip_width={{strip_width}}&max_strips={{max_strips}}&kind={{kind}}&radius={{radius}}&radius_inner={{radius_inner}}" download="source_render.png">download</a>
         </div>
 
         <div class="card-content" id="render-card-content">
-            <img id="source-render" src="/api/source/{{ source.id }}/render?height={{height}}&width={{width}}&strip_width={{strip_width}}&max_strips={{max_strips}}" alt="Source Render"/>
+            <img id="source-render" src="/api/source/{{ source.id }}/render?height={{height}}&width={{width}}&strip_width={{strip_width}}&max_strips={{max_strips}}&kind={{kind}}&radius={{radius}}&radius_inner={{radius_inner}}" alt="Source Render"/>
         </div>
     </div>
 
@@ -73,12 +82,15 @@
             const width = document.getElementById('width').value;
             const strip_width = document.getElementById('strip_width').value;
             const max_strips = document.getElementById('max_strips').value;
+            const kind = document.getElementById('kind').value;
+            const radius = document.getElementById('radius').value;
+            const radius_inner = document.getElementById('radius_inner').value;
 
             const img = document.getElementById('source-render');
             const btn = document.getElementById('download-button');
             const lbl = document.getElementById('mb-param-lbl')
 
-            let url = `/api/source/{{ source.id }}/render?height=${height}&width=${width}&strip_width=${strip_width}&max_strips=${max_strips}`
+            let url = `/api/source/{{ source.id }}/render?height=${height}&width=${width}&strip_width=${strip_width}&max_strips=${max_strips}&kind=${kind}&radius=${radius}&radius_inner=${radius_inner}`;
 
             // console.log("url: ", url);
 
@@ -106,32 +118,10 @@
         }
 
         async function zoomin() {
-            // const canva = document.getElementById("source-render");
-            // const lbl = document.getElementById('mb-param-lbl');
-            
-            // if (!canva.style.scale) {
-            //     canva.style.scale = 1
-            // }
-            
-            // canva.style.scale = Math.min(parseFloat(canva.style.scale) + 0.1, 10.0);
-            
-            // lbl.textContent = `(${canva.style.scale}x)`;
-
             zoom(0.1);
         }
 
         async function zoomout() {
-            // const canva = document.getElementById("source-render");
-            // const lbl = document.getElementById('mb-param-lbl');
-
-            // if (!canva.style.scale) {
-            //     canva.style.scale = 1
-            // }
-
-            // canva.style.scale = Math.max(parseFloat(canva.style.scale) - 0.1, 0.1);
-        
-            // lbl.textContent = `(${canva.style.scale}x)`;
-            
             zoom(-0.1);
         }
     </script>
