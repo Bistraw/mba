@@ -89,6 +89,30 @@ class SourceService:
         return source
 
     @classmethod
+    def get_sources(cls, conn : sqlite3.Connection):
+        cur = conn.cursor()
+
+        sql = "SELECT id, sha512, imdb_id, kind, metadata_name, metadata_year FROM Source;"
+
+        cur.execute(sql)
+
+        sources = []
+
+        for row in cur.fetchall():
+            source = Source()
+
+            source.id = row[0]
+            source.sha512 = row[1]
+            source.imdb_id = row[2]
+            source.kind = row[3]
+            source.metadata_name = row[4]
+            source.metadata_year = row[5]
+
+            sources.append(source)
+
+        return sources
+
+    @classmethod
     def create_source_frame(cls, conn : sqlite3.Connection, source_id : int, source_frame : SourceFrame, do_commit : bool = True):
         cur = conn.cursor()
 

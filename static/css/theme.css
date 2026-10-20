@@ -1,0 +1,27 @@
+html, body {
+    font-family: monospace;
+    height: 100%;
+    padding: 0px;
+    margin: 0px;
+}
+
+html {
+    padding: 0px 5px;
+}
+
+.card { 
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-bottom: 5px;
+}
+
+.card-header {
+    font-weight: bold;
+    border-bottom: 1px solid #ccc;
+    padding: 5px;
+    background-color: #eee;
+}
+
+.card-content {
+    padding: 10px;
+}

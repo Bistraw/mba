@@ -65,7 +65,7 @@ def render(data : list[Color], height : int = 200, strip_width : int = 1, color_
     
     draw = ImageDraw.Draw(img)
 
-    print(f"n_raw: {n_raw}, n: {n}, w: {w}, h: {h}, s_width: {strip_width}", end="\n\n")
+    #print(f"n_raw: {n_raw}, n: {n}, w: {w}, h: {h}, s_width: {strip_width}", end="\n\n")
 
     x1 = 0
     y1 = 0
@@ -102,7 +102,7 @@ def render(data : list[Color], height : int = 200, strip_width : int = 1, color_
             x2 += strip_width
             y2 = h
 
-    print(f"img.width: {img.width}, img.height: {img.height}")
+    #print(f"img.width: {img.width}, img.height: {img.height}")
     
     return img
 
@@ -120,8 +120,7 @@ def render_force_max_lines_force_size(data : list[Color], height : int, strip_wi
 
     img = render(data, height, strip_width, colors_per_strip)
 
-    if img.width > width:
-        img = img.resize((width, height))
+    img = img.resize((width, height))
 
     return img
 

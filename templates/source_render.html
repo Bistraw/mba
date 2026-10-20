@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MBA - Render</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png')}}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/theme.css') }}"/>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/render.css') }}"/>
+</head>
+<body>
+    <a href="{{ url_for('get_source_list') }}">[back to listing]</a>
+
+    <h2>source render</h2>
+
+    <div class="card">
+        <div class="card-header">
+            <span>source</span>
+        </div>
+
+        <div class="card-content">
+            <p><strong>title:</strong> {{ source.metadata_name }} ({{ source.metadata_year }})</p>
+            <p><strong>source_id:</strong> {{ source.id }}</p>
+            <p><strong>imdb_id:</strong> <a href="https://www.imdb.com/title/{{ source.imdb_id }}/" target="_blank">{{ source.imdb_id }}</a></p>
+            <P><strong>sha512: </strong> {{ source.sha512 }}</P>
+        </div>
+    </div>
+
+    <form class="card" onsubmit="event.preventDefault(); render();">
+        <div class="card-header">
+            <span>parameters</span>
+        </div>
+ 
+        <div class="card-content">
+            <p style="color: #777"><i>*set the parameters below and click render to update the image</i></p>
+
+            <label for="width">width:</label>
+            <input  type="number" id="width" value="{{ width }}" min="10" max="4200"/>
+            <label for="height">height:</label>
+            <input  type="number" id="height" value="{{ height }}" min="10" max="4200"/>
+            <label for="strip_width">strip_width:</label>   
+            <input  type="number" id="strip_width" value="{{ strip_width }}" min="1" max="100"/>
+            <label for="max_strips">max_strips:</label>
+            <input  type="number" id="max_strips" value="{{ max_strips }}" min="1" max="10000"/>
+
+            <input type="submit" value="render">
+        </div>
+
+    </form>
+
+    <div id="render-card" class="card">
+        <div id="render-card-header" class="card-header">
+            <span>movie barcode</span>
+            <span id="mb-param-lbl" style="color: #777; font-size: lighter"> <i>(size: {{width}}x{{height}}, strip_width: {{strip_width}}, max_strips: {{max_strips}})</i></span>
+            
+            <a onclick="zoomin()" href="#">zoom-in</a>
+            <span> / </span>
+            <a onclick="zoomout()" href="#">zoom-out</a>
+            <span id="mb-zoom-lbl" style="color: #777; font-size: lighter"> <i> (1x)</i></span>
+            
+            <a id="download-button" style="float: right" href="/api/source/{{ source.id }}/render?height={{height}}&width={{width}}&strip_width={{strip_width}}&max_strips={{max_strips}}" download="source_render.png">download</a>
+        </div>
+
+        <div class="card-content" id="render-card-content">
+            <img id="source-render" src="/api/source/{{ source.id }}/render?height={{height}}&width={{width}}&strip_width={{strip_width}}&max_strips={{max_strips}}" alt="Source Render"/>
+        </div>
+    </div>
+
+
+    <script>
+        async function render() {
+            const height = document.getElementById('height').value;
+            const width = document.getElementById('width').value;
+            const strip_width = document.getElementById('strip_width').value;
+            const max_strips = document.getElementById('max_strips').value;
+
+            const img = document.getElementById('source-render');
+            const btn = document.getElementById('download-button');
+            const lbl = document.getElementById('mb-param-lbl')
+
+            let url = `/api/source/{{ source.id }}/render?height=${height}&width=${width}&strip_width=${strip_width}&max_strips=${max_strips}`
+
+            // console.log("url: ", url);
+
+            img.src = url;
+            btn.href = url;
+            lbl.textContent = `(size: ${width}x${height}, strip_width: ${strip_width}, max_strips: ${max_strips})`
+        }
+
+        async function zoom(value) {
+            const canva = document.getElementById("source-render");
+            const lbl = document.getElementById('mb-zoom-lbl');
+            
+            if (!canva.style.scale) {
+                canva.style.scale = 1
+            }
+            
+            let scale = parseFloat(canva.style.scale) + value;
+            
+            scale = Math.min(scale, 10.0);
+            scale = Math.max(scale, 0.1);
+
+            canva.style.scale = scale;
+            
+            lbl.textContent = `(${scale}x)`;
+        }
+
+        async function zoomin() {
+            // const canva = document.getElementById("source-render");
+            // const lbl = document.getElementById('mb-param-lbl');
+            
+            // if (!canva.style.scale) {
+            //     canva.style.scale = 1
+            // }
+            
+            // canva.style.scale = Math.min(parseFloat(canva.style.scale) + 0.1, 10.0);
+            
+            // lbl.textContent = `(${canva.style.scale}x)`;
+
+            zoom(0.1);
+        }
+
+        async function zoomout() {
+            // const canva = document.getElementById("source-render");
+            // const lbl = document.getElementById('mb-param-lbl');
+
+            // if (!canva.style.scale) {
+            //     canva.style.scale = 1
+            // }
+
+            // canva.style.scale = Math.max(parseFloat(canva.style.scale) - 0.1, 0.1);
+        
+            // lbl.textContent = `(${canva.style.scale}x)`;
+            
+            zoom(-0.1);
+        }
+    </script>
+</body>
+</html>
