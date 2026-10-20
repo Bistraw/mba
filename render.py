@@ -1,7 +1,8 @@
 import math
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFont
 from domain import Color, SourceService, SourceFrame, Source
 import database
+import os
 
 def get_color_avg(data : list[Color]):
     n = len(data)
@@ -91,7 +92,7 @@ def render(data : list[Color], height : int = 200, strip_width : int = 1, color_
             g = 0
             b = 0
 
-            print(f"i: {i}, color: {c.as_tuple()}, x1: {x1}, y1: {y1}, x2: {x2}, y2: {y2}")
+            #print(f"i: {i}, color: {c.as_tuple()}, x1: {x1}, y1: {y1}, x2: {x2}, y2: {y2}")
             
             draw.rectangle(
                 xy=(x1, 0, x2, h - 1),
@@ -369,6 +370,32 @@ def test_render_circle():
     img = render_circle(data, 1000, 200, 24, 1000, 1000)
 
     img.show()
+
+def render_frame(text_left : str, text_right : str, framed_img : Image, background_color : Color, foreground_color : Color, header_height : int, width : int, height : int):
+    img = Image.new(mode="RGBA", size=(width, height), color = background_color.as_tuple())
+
+    padding = 20
+
+    c_img_w = width - (2 * padding)
+    c_img_h = height - (2 * padding) - header_height
+    c_img = framed_img.resize((c_img_w, c_img_h))
+
+    off_w = padding
+    off_h = padding + header_height
+
+    img.paste(c_img, (off_w, off_h))
+
+    draw = ImageDraw.Draw(img)
+
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    font_path = os.path.join(dir_path, "assets", "fonts", "sans_serif", "SansSerifBookFLF.otf")
+
+    font = ImageFont.truetype(font_path, 16, )
+
+    draw.text((padding, padding), text_left, foreground_color.as_tuple(), font=font, anchor="ls")
+    draw.text((width - padding, padding), text_right, foreground_color.as_tuple(), font=font, anchor="rs")
+
+    return img
 
 if __name__ == "__main__":  
     #test_render()

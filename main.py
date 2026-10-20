@@ -11,6 +11,11 @@ database.update_schema()
 
 app = Flask(__name__)
 
+def is_it_true(value):
+    print(f"is_it_true, value: {value}")
+  
+    return value.lower() == 'true'
+
 @app.route('/api/source/<int:source_id>/render', methods=['GET'])
 def api_get_source_render(source_id):
     
@@ -22,7 +27,22 @@ def api_get_source_render(source_id):
     radius = request.args.get('radius', default=400, type=int)
     radius_inner = request.args.get('radius_inner', default=20, type=int)
 
+    f_ = request.args.get('f', default=False, type=is_it_true)
+    f_bg_r = request.args.get("f_bg_r", default=250, type=int)
+    f_bg_g = request.args.get("f_bg_g", default=250, type=int)
+    f_bg_b = request.args.get("f_bg_b", default=250, type=int)
+    f_fg_r = request.args.get("f_fg_r", default=0, type=int)
+    f_fg_g = request.args.get("f_fg_g", default=0, type=int)
+    f_fg_b = request.args.get("f_fg_b", default=0, type=int)
+    f_h_h = request.args.get("f_h_h", default=20, type=int)
+    
+    #f_t_l = request.args.get("f_t_l", default="frame title", type=str)
+
+    print(f"request processing... f_: {f_}")
+
     conn = database.create_connection()
+
+    source = SourceService.get_source_by_id(conn, source_id)
     
     frames = SourceService.get_source_frames(conn, source_id)
 
@@ -35,6 +55,9 @@ def api_get_source_render(source_id):
         img : Image = render.render_force_max_lines_force_size(data, height, strip_width, max_strips, width)
     else:
         img : Image = render.render_circle(data, radius, radius_inner, max_strips, width, height)
+
+    if f_ == True:
+        img : Image = render.render_frame(f"{source.metadata_name} ({source.metadata_year})", "", img, Color(f_bg_r, f_bg_g, f_bg_b), Color(f_fg_r, f_fg_g, f_fg_b), f_h_h, width, height)
     
     img_io = io.BytesIO()
     

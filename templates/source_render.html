@@ -51,6 +51,11 @@
             <input  type="number" id="radius" value="{{ radius }}" min="1" max="10000"/>
             <label for="radius">inner radius:</label>
             <input  type="number" id="radius_inner" value="{{ radius_inner }}" min="1" max="10000"/>
+            <label for="f">frame: </label>
+            <select id="f" value="{{f}}">
+                <option value="false">none</option>
+                <option value="true">default</option>
+            </select>
 
             <input type="submit" value="render">
         </div>
@@ -67,11 +72,11 @@
             <a onclick="zoomout()" href="#">zoom-out</a>
             <span id="mb-zoom-lbl" style="color: #777; font-size: lighter"> <i> (1x)</i></span>
             
-            <a id="download-button" style="float: right" href="/api/source/{{ source.id }}/render?height={{height}}&width={{width}}&strip_width={{strip_width}}&max_strips={{max_strips}}&kind={{kind}}&radius={{radius}}&radius_inner={{radius_inner}}" download="source_render.png">download</a>
+            <a id="download-button" style="float: right" href="/api/source/{{ source.id }}/render?height={{height}}&width={{width}}&strip_width={{strip_width}}&max_strips={{max_strips}}&kind={{kind}}&radius={{radius}}&radius_inner={{radius_inner}}&f={{f}}" download="source_{{source.id}}_render.png">download</a>
         </div>
 
         <div class="card-content" id="render-card-content">
-            <img id="source-render" src="/api/source/{{ source.id }}/render?height={{height}}&width={{width}}&strip_width={{strip_width}}&max_strips={{max_strips}}&kind={{kind}}&radius={{radius}}&radius_inner={{radius_inner}}" alt="Source Render"/>
+            <img id="source-render" src="/api/source/{{ source.id }}/render?height={{height}}&width={{width}}&strip_width={{strip_width}}&max_strips={{max_strips}}&kind={{kind}}&radius={{radius}}&radius_inner={{radius_inner}}&f={{f}}" alt="Source Render"/>
         </div>
     </div>
 
@@ -85,14 +90,15 @@
             const kind = document.getElementById('kind').value;
             const radius = document.getElementById('radius').value;
             const radius_inner = document.getElementById('radius_inner').value;
+            const f = document.getElementById('f').value;
 
             const img = document.getElementById('source-render');
             const btn = document.getElementById('download-button');
             const lbl = document.getElementById('mb-param-lbl')
 
-            let url = `/api/source/{{ source.id }}/render?height=${height}&width=${width}&strip_width=${strip_width}&max_strips=${max_strips}&kind=${kind}&radius=${radius}&radius_inner=${radius_inner}`;
+            let url = `/api/source/{{ source.id }}/render?height=${height}&width=${width}&strip_width=${strip_width}&max_strips=${max_strips}&kind=${kind}&radius=${radius}&radius_inner=${radius_inner}&f=${f == 'true'}`;
 
-            // console.log("url: ", url);
+            console.log("url: ", url, "f: ", f);
 
             img.src = url;
             btn.href = url;
