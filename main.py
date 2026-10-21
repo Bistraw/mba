@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, send_file, render_template
+from flask import Flask, redirect, jsonify, url_for, request, send_file, render_template
 import database
 from domain import Color, Source, SourceKind, SourceFrame, SourceService
 import render
@@ -72,6 +72,10 @@ def api_get_source_list():
     conn = database.create_connection()
     sources = SourceService.get_sources(conn)
     return jsonify([s.__dict__ for s in sources])
+
+@app.route('/')
+def get_landing():
+    return redirect(url_for('get_source_list'))
 
 @app.route('/source/list', methods=['GET'])
 def get_source_list():

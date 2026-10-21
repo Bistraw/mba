@@ -371,6 +371,23 @@ def test_render_circle():
 
     img.show()
 
+def paint_transparent_pixels(img : Image, replace_color : Color):
+    new_data = []
+
+    data = img.getdata()
+
+    for d in data:
+        # print("d: ", d)
+
+        if d[3] == 0:
+            new_data.append(replace_color.as_tuple())
+        else:
+            new_data.append(d)
+
+    img.putdata(new_data)
+
+    return img
+
 def render_frame(text_left : str, text_right : str, framed_img : Image, background_color : Color, foreground_color : Color, header_height : int, width : int, height : int):
     img = Image.new(mode="RGBA", size=(width, height), color = background_color.as_tuple())
 
@@ -379,6 +396,7 @@ def render_frame(text_left : str, text_right : str, framed_img : Image, backgrou
     c_img_w = width - (2 * padding)
     c_img_h = height - (2 * padding) - header_height
     c_img = framed_img.resize((c_img_w, c_img_h))
+    c_img = paint_transparent_pixels(c_img, background_color)
 
     off_w = padding
     off_h = padding + header_height
