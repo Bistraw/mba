@@ -100,8 +100,12 @@ def get_source_render(source_id):
 
     return render_template('source_render.html', source=source, frames=frames, height=height, width=width, strip_width=strip_width, max_strips=max_strips, kind=kind, radius=radius, radius_inner=radius_inner)
 
+@app.route('/contributors', methods=['GET'])
+def get_contributors():
+    return render_template('contributors.html')
+
 @app.route('/static/<path:filename>')
-def static_css(filename):
+def static_file(filename):
     return send_file(os.path.join('static', 'css', filename))
 
 if __name__ == "__main__":
