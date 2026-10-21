@@ -1,11 +1,13 @@
-from flask import Flask, redirect, jsonify, url_for, request, send_file, render_template
+import io
+import os
+from functools import wraps
+from PIL import Image, ImageDraw
+from flask import Flask, redirect, jsonify, url_for, request, abort, send_file, render_template
 import database
 from domain import Color, Source, SourceKind, SourceFrame, SourceService
 import render
 import ingester
-import os
-import io
-from PIL import Image, ImageDraw
+import environment
 
 database.update_schema()
 
@@ -15,6 +17,19 @@ def is_it_true(value):
     print(f"is_it_true, value: {value}")
   
     return value.lower() == 'true'
+
+def require_appkey(request_func):
+    @wraps(request_func)
+
+    def decoreated_func(*args, **kwargs):
+        key = request.args.get('key') 
+
+        if key and key == environment.REMOTE_APIKEY and len(environment.REMOTE_APIKEY) > 0:
+            return request_func
+        else
+            abort(401)
+
+    return decoreated_func
 
 @app.route('/api/source/<int:source_id>/render', methods=['GET'])
 def api_get_source_render(source_id):
@@ -72,6 +87,41 @@ def api_get_source_list():
     conn = database.create_connection()
     sources = SourceService.get_sources(conn)
     return jsonify([s.__dict__ for s in sources])
+
+@app.route('/api/source', methods=['POST'])
+@require_appkey
+def api_set_source():
+    content = request.get_json()
+
+    s : Source = Source()
+
+    s.sha512 = content['sha512']
+    s.imdb_id = content['imdb_id']
+    s.kind = content['kind']
+    s.metadata_name = content['metadata_name']
+    s.metadata_year = content['metadata_year']
+
+    conn = database.create_connection()
+
+    s.id = SourceService.create_source(conn, s, False)
+
+    frames = []
+
+    for i, f in enumerate(content['frames']):
+        sf : SourceFrame = SourceFrame()
+
+        sf.frame_index = i
+        sf.color_r = f["color_r"]
+        sf.color_g = f["color_g"]
+        sf.color_b = f["color_b"]
+
+        sf.id = SourceService.create_source_frame(conn, s.id, sf, False)
+
+        frames.append(sf)
+
+    conn.commit()    
+
+    return jsonify({ "source_id" : s.id, "frame_count", len(frames)})
 
 @app.route('/')
 def get_landing():

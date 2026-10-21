@@ -122,6 +122,35 @@ def feed_jellyfin_items():
 
             print(f"error processing item, exception: {repr(e)}")
 
+def get_jellyfin_items():
+    pass
+
+def feed_item_to_remote_api(s : Source, f : list[SourceFrame]):
+    pass
+
+def feed_item_to_local_db(s : Source, f : list[SourceFrame]):
+    pass
+
+def feed(input : str = "jellyfin", destiny : str = "remote"):
+    
+    items = []
+
+    if input == "jellyfin":
+        items = get_jellyfin_items()
+    
+    if destiny == "remote":
+        for i in items:
+
+            content = {
+                "imdb_id": i["imdb_id"]
+                ""
+            }
+
+
+
+
+    pass
+
 if __name__ == "__main__":
     #file_path = r"D:\Videos\Movies\[MTBB] Mushoku Tensei (BD 1080p)\[MTBB] Mushoku Tensei - 01v3 [0C3C916A].mkv"
     #file_path = r"D:\Videos\Movies\Black Swan (2010) [1080p] [BluRay] [5.1] [YTS.MX]\Black.Swan.2010.1080p.BluRay.x264.AAC5.1-[YTS.MX].mp4"

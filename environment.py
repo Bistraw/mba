@@ -10,3 +10,5 @@ def get_environment_var(name, default = ""):
 
 DB_PATH = get_environment_var("DB_PATH", "./mba.sqlite")
 JELLY_APIKEY = get_environment_var("JELLY_APIKEY", "")
+REMOTE_APIKEY = get_environment_var("REMOTE_APIKEY", "")
+REMOTE_ADDRESS = get_environment_var("REMOTE_ADDRESS", "")
