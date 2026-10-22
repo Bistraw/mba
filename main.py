@@ -22,11 +22,14 @@ def require_appkey(request_func):
     @wraps(request_func)
 
     def decoreated_func(*args, **kwargs):
+        
         key = request.args.get('key') 
 
+        print(f"checking auth, key = {key}")
+
         if key and key == environment.REMOTE_APIKEY and len(environment.REMOTE_APIKEY) > 0:
-            return request_func
-        else
+            return request_func(*args, **kwargs)
+        else:
             abort(401)
 
     return decoreated_func
@@ -121,7 +124,21 @@ def api_set_source():
 
     conn.commit()    
 
-    return jsonify({ "source_id" : s.id, "frame_count", len(frames)})
+    return jsonify({ "source_id" : s.id, "frame_count" : len(frames)})
+
+@app.route('/api/source/lookup', methods=['GET'])
+def asi_source_lookup():
+    conn = database.create_connection()
+
+    imdb_id = request.args.get('imdb_id', default="", type=str)
+    sha512 = request.args.get('sha512', default="", type=str)
+
+    source_id = SourceService.lookup_source(conn, sha512, imdb_id)
+
+    if source_id == 0:
+        abort(404)
+
+    return jsonify({"source_id" : source_id})
 
 @app.route('/')
 def get_landing():

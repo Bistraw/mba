@@ -163,6 +163,21 @@ class SourceService:
         
         return len(rows) > 0
 
+    @classmethod
+    def lookup_source(cls, conn : sqlite3.Connection, sha512 : str = "", imdb_id : str = ""):
+        cur = conn.cursor()
+
+        sql = "SELECT id FROM Source WHERE sha512 = ? OR imdb_id = ?;"
+
+        cur.execute(sql, [sha512, imdb_id])
+
+        rows = cur.fetchall()
+
+        if len(rows) > 0:
+            return rows[0]
+        else:
+            return 0
+
 if __name__ == "__main__":
     conn = database.create_connection()
 

@@ -6,15 +6,15 @@ import os
 import hash
 import ingester
 
-def create_source_from_file(file_path : str) -> Source:
+def create_source_from_file(file_path : str, imdb_id : str, sha512 : str, metadata_name : str, metadata_year : int, kind : int) -> Source:
     conn = database.create_connection()
 
     s = Source()
 
-    s.sha512 = "s3"
-    s.imdb_id = "3"
-    s.metadata_name = "TEST_SOURCE"
-    s.kind = SourceKind.UNKNOWN
+    s.sha512 = sha512
+    s.imdb_id = imdb_id
+    s.metadata_name = metadata_name
+    s.kind = kind
 
     s.id = SourceService.create_source(conn, s, False)
 
@@ -33,7 +33,7 @@ def create_source_from_file(file_path : str) -> Source:
 
     return s
 
-def feed_jellyfin_items():
+def feed_jellyfin_items(destiny : str = "remote"):
     url = f"http://localhost:8096/items?apikey={environment.JELLY_APIKEY}&recursive=true&hasImdbId=true&includeItemTypes=Movie&fields=ProviderIds,Path"
 
     response = requests.get(url)
@@ -51,8 +51,6 @@ def feed_jellyfin_items():
     for i in response_json["Items"]:
 
         try:
-            s = Source()
-
             if not i["Type"] == "Movie":
                 print(f"Item is not a movie. Type: {i['Type']}")
                 continue
@@ -77,79 +75,111 @@ def feed_jellyfin_items():
                 print(f"Item does not have ProductionYear. Skipping.")
                 continue
 
+            s = Source()
+
             s.imdb_id = i["ProviderIds"]["Imdb"]
-            s.path = i["Path"]
             s.kind = SourceKind.MOVIE
             s.metadata_name = i["Name"]
             s.metadata_year = int(i["ProductionYear"])
 
-            print(f"processing file, path: {s.path}")
+            #print(f"processing file, path: {s.path}")
 
-            if not os.path.exists(s.path):
-                print(f"File does not exist: {s.path}")
+            # if we already have a source created for that movie id we skip it
+
+            if destiny == "remote":
+                response = requests.get(f"{environment.REMOTE_ADDRESS}/api/source/lookup?imdb_id={s.imdb_id}")
+
+                if response.status_code != 404:
+                    print(f"source already exists for imdb_id: {s.imdb_id}")
+                    continue
+            else:
+                if SourceService.do_source_exists(conn, "", s.imdb_id):   
+                    print(f"source already exists for imdb_id: {s.imdb_id}")
+                    continue
+                                    
+            file_path = i["Path"] 
+
+            if not os.path.exists(file_path):
+                print(f"File does not exist: {file_path}")
                 continue
 
-            if SourceService.do_source_exists(conn, "", s.imdb_id):   
-                print(f"source already exists, imdb_id matched: {s.imdb_id}")
-                continue
+            s.sha512 = hash.get_audio_hash_sha512(file_path)
             
-            s.sha512 = hash.get_audio_hash_sha512(s.path)
+            # if we already have a source created for that one file we can skip it
 
-            if SourceService.do_source_exists(conn, s.sha512, ""):   
-                print(f"source already exists, hash matched: {s.sha512}")
-                continue
+            if destiny == "remote":
+                response = requests.get(f"{environment.REMOTE_ADDRESS}/api/source/lookup?sha512={s.sha512}")
+                
+                if response.status_code != 404:
+                    print(f"source already exists for sha512: {s.sha512}")
+                    continue
+            else:
+                if SourceService.do_source_exists(conn, s.sha512, ""):   
+                    print(f"source already exists for sha512: {s.sha512}")
+                    continue
 
-            s.id = SourceService.create_source(conn, s, False)
+            # so all is good, now we create the source
 
-            print(f"source created. imdb_id: {s.imdb_id}, path: {s.path}, id: {s.id}, name: {s.metadata_name}, year: {s.metadata_year}, sha512: {s.sha512}")
-            print(f"ingesting source frames for source id: {s.id}")
+            if destiny == "remote":
+                pass
+            else:
+                s.id = SourceService.create_source(conn, s, False)
+                
+                print(f"source created. id: {s.id}, imdb_id: {s.imdb_id}, path: {file_path}, id: {s.id}, name: {s.metadata_name}, year: {s.metadata_year}, sha512: {s.sha512}. ingesting frames...")
 
-            data = ingester.ingest(s.path)
+            frames = ingester.ingest(file_path)
+            r_frames = []
 
-            for i,d in enumerate(data):
+            for i, f in enumerate(frames):
                 sf = SourceFrame()
 
                 sf.source_id = s.id
-                sf.color = d
+                sf.color = f
                 sf.frame_index = i
 
-                sf.id = SourceService.create_source_frame(conn, s.id, sf, False)
-            
-            conn.commit()
+                if destiny == "remote":
+                    rf = {
+                        "color_r" : f.r,
+                        "color_g" : f.g,
+                        "color_b" : f.b
+                    }
+
+                    r_frames.append(rf)
+                else:
+                    sf.id = SourceService.create_source_frame(conn, s.id, sf, False)
+
+            if destiny == "remote":
+                response = requests.post(
+                f"{environment.REMOTE_ADDRESS}/api/source?key={environment.REMOTE_APIKEY}", 
+                headers={"content-type": "application/json"}, 
+                json={
+                    "sha512": s.sha512, 
+                    "imdb_id": s.imdb_id, 
+                    "kind": s.kind, 
+                    "metadata_name": s.metadata_name, 
+                    "metadata_year": s.metadata_year, 
+                    "frames": r_frames
+                })
+
+                if response.status_code != 200:
+                    print(f"remote request failed with status_code: {response.status_code}")
+                    continue
+
+                response_json = response.json() 
+
+                s.id = response_json["source_id"]
+
+                frame_count = response_json["frame_count"]
+
+                print(f"source created on remote. id: {s.id}, imdb_id: {s.imdb_id}, item: {s.metadata_name} ({s.metadata_year}), frame_count: {frame_count}")
+                
+            else:
+                conn.commit()
 
         except Exception as e:
             conn.rollback()
 
-            print(f"error processing item, exception: {repr(e)}")
-
-def get_jellyfin_items():
-    pass
-
-def feed_item_to_remote_api(s : Source, f : list[SourceFrame]):
-    pass
-
-def feed_item_to_local_db(s : Source, f : list[SourceFrame]):
-    pass
-
-def feed(input : str = "jellyfin", destiny : str = "remote"):
-    
-    items = []
-
-    if input == "jellyfin":
-        items = get_jellyfin_items()
-    
-    if destiny == "remote":
-        for i in items:
-
-            content = {
-                "imdb_id": i["imdb_id"]
-                ""
-            }
-
-
-
-
-    pass
+            print(f"exception raise while processing item: {repr(e)}")
 
 if __name__ == "__main__":
     #file_path = r"D:\Videos\Movies\[MTBB] Mushoku Tensei (BD 1080p)\[MTBB] Mushoku Tensei - 01v3 [0C3C916A].mkv"
@@ -160,4 +190,4 @@ if __name__ == "__main__":
     #print(f"source_id: {s.id}")
     #render_source(s.id)
 
-    feed_jellyfin_items()
+    feed_jellyfin_items(destiny="remote")
