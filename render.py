@@ -379,7 +379,7 @@ def paint_transparent_pixels(img : Image, replace_color : Color):
     for d in data:
         # print("d: ", d)
 
-        if d[3] == 0:
+        if len(d) > 3 and d[3] == 0:
             new_data.append(replace_color.as_tuple())
         else:
             new_data.append(d)
