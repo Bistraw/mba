@@ -3,6 +3,9 @@ from PIL import Image, ImageDraw, ImageFont
 from domain import Color, SourceService, SourceFrame, Source
 import database
 import os
+import utils
+import domain
+import math
 
 def get_color_avg(data : list[Color]):
     n = len(data)
@@ -222,12 +225,6 @@ def render_circle(data : list[Color], rad : int = 250, rad_inner: int = 20, max_
             g = int(g / col_per_strip)
             b = int(b / col_per_strip)
 
-            # if i % col_per_strip > 0:
-            #     r = int(r / i % col_per_strip)
-            #     g = int(g / i % col_per_strip)
-            #     b = int(b / i % col_per_strip)
-            # else:
-
             draw.polygon(
                 [p3, p1, p2,  p4],
                 fill = (r, g, b)
@@ -244,9 +241,8 @@ def render_circle(data : list[Color], rad : int = 250, rad_inner: int = 20, max_
 
     return img
 
-def test_render_circle():
-    
-    data = [
+def test_data():
+    return [
         Color(255, 0, 255),   
         Color(100, 0, 255),   
         Color(0, 0, 255),     
@@ -365,6 +361,10 @@ def test_render_circle():
         Color(255, 255, 255),  
     ]
 
+def test_render_circle():
+    
+    data = test_data()
+
     print(f"data lenght: {len(data)}")
 
     img = render_circle(data, 1000, 200, 24, 1000, 1000)
@@ -385,6 +385,48 @@ def paint_transparent_pixels(img : Image, replace_color : Color):
             new_data.append(d)
 
     img.putdata(new_data)
+
+    return img
+ 
+def render_circle_2(data : list[Color], width : int = 250, height : int = 250, strips : int = 2000):
+    n = len(data)
+
+    strips = min(strips, n)
+    
+    r = width // 2
+    
+    img = Image.new(mode="RGBA", size=(r*2, r*2))
+    
+    draw = ImageDraw.Draw(img)
+
+    colors_per_strip = math.ceil(n / min(r, strips))
+    strip_width = r // min(r, strips)
+
+    r_ = 0
+    g_ = 0
+    b_ = 0
+    rad_ = r
+
+    print(f"n: {n}, r: {r}, strips: {strips}, strip_width: {strip_width}, colors_per_strip: {colors_per_strip}")
+
+    for i, d in enumerate(data):
+        r_ += d.r
+        g_ += d.g
+        b_ += d.b
+
+        if i % colors_per_strip == 0:
+            r_ = r_ // colors_per_strip
+            g_ = g_ // colors_per_strip
+            b_ = b_ // colors_per_strip
+
+            draw.circle(xy=(r,r), radius=rad_, fill=(r_, g_, b_))
+
+            r_ = 0
+            g_ = 0
+            b_ = 0
+            rad_ -= strip_width
+
+    img = img.resize((width, height), resample=Image.Resampling.HAMMING)
 
     return img
 
@@ -415,10 +457,22 @@ def render_frame(text_left : str, text_right : str, framed_img : Image, backgrou
 
     return img
 
-if __name__ == "__main__":  
-    #test_render()
+def get_source_data(source_id : int):
     database.update_schema()
-    
-    #render_source(15)
 
-    test_render_circle()
+    con = database.create_connection()
+
+    return [f.color for f in domain.SourceService.get_source_frames(con, source_id)]
+
+if __name__ == "__main__":  
+    
+    #test_render()
+    #render_source(15)
+    #test_render_circle()
+
+    #data = test_data()
+    data = get_source_data(10)
+
+    img = render_circle_2(data, 1000, 1000, 2000)
+
+    img.save("./render.png")

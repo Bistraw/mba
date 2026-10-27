@@ -41,7 +41,7 @@ def api_get_source_render(source_id):
     width = request.args.get('width', default=1000, type=int)
     strip_width = request.args.get('strip_width', default=5, type=int)
     max_strips = request.args.get('max_strips', default=1000, type=int)
-    kind = request.args.get('kind', default=0, type=int) # gotta add an enum for the render kind... someone do that latter
+    kind = request.args.get('kind', default=0, type=int) # gotta add an enum for the render kind... someone do that later
     radius = request.args.get('radius', default=400, type=int)
     radius_inner = request.args.get('radius_inner', default=20, type=int)
 
@@ -71,8 +71,10 @@ def api_get_source_render(source_id):
 
     if kind == 0:
         img : Image = render.render_force_max_lines_force_size(data, height, strip_width, max_strips, width)
-    else:
+    elif kind == 1:
         img : Image = render.render_circle(data, radius, radius_inner, max_strips, width, height)
+    elif kind == 2:
+        img : Image = render.render_circle_2(data, width, height, max_strips)
 
     if f_ == True:
         img : Image = render.render_frame(f"{source.metadata_name} ({source.metadata_year})", "", img, Color(f_bg_r, f_bg_g, f_bg_b), Color(f_fg_r, f_fg_g, f_fg_b), f_h_h, width, height)
