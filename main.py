@@ -1,6 +1,6 @@
-from flask import Flask, jsonify, request, send_file, render_template
+from flask import Flask, jsonify, request, send_file, send_from_directory, render_template
 import database
-from domain import Color, Source, SourceKind, SourceFrame, SourceService
+from domain import Color, ColorMode, Source, SourceKind, SourceFrame, SourceService
 import render
 import ingester
 import os
@@ -26,6 +26,7 @@ def api_get_source_render(source_id):
     kind = request.args.get('kind', default=0, type=int) # gotta add an enum for the render kind... someone do that latter
     radius = request.args.get('radius', default=400, type=int)
     radius_inner = request.args.get('radius_inner', default=20, type=int)
+    color_mode = request.args.get('color_mode', default=ColorMode.AVERAGE, type=int)
 
     f_ = request.args.get('f', default=False, type=is_it_true)
     f_bg_r = request.args.get("f_bg_r", default=250, type=int)
@@ -49,7 +50,10 @@ def api_get_source_render(source_id):
     data = []
 
     for f in frames:
-        data.append(f.color)
+        data.append(f.get_color(color_mode))
+
+    if any(c is None for c in data):
+        return jsonify(error="this source has no brightest color data yet, run feeder.py to backfill it"), 409
 
     if kind == 0:
         img : Image = render.render_force_max_lines_force_size(data, height, strip_width, max_strips, width)
@@ -89,12 +93,18 @@ def get_source_render(source_id):
     kind = request.args.get('kind', default=0, type=int) # gotta add an enum for the render kind... someone do that latter
     radius = request.args.get('radius', default=400, type=int)
     radius_inner = request.args.get('radius_inner', default=20, type=int)
+    color_mode = request.args.get('color_mode', default=ColorMode.AVERAGE, type=int)
+    f_ = request.args.get('f', default=False, type=is_it_true)
 
     conn = database.create_connection()
     source = SourceService.get_source_by_id(conn, source_id)
-    frames = SourceService.get_source_frames(conn, source_id)
 
-    return render_template('source_render.html', source=source, frames=frames, height=height, width=width, strip_width=strip_width, max_strips=max_strips, kind=kind, radius=radius, radius_inner=radius_inner)
+    return render_template('source_render.html', source=source, height=height, width=width, strip_width=strip_width, max_strips=max_strips, kind=kind, radius=radius, radius_inner=radius_inner, color_mode=color_mode, f=f_)
+
+@app.route('/assets/fonts/<path:filename>')
+def asset_fonts(filename):
+    # the ui uses the same fonts as the framed renders
+    return send_from_directory(os.path.join('assets', 'fonts'), filename)
 
 @app.route('/static/<path:filename>')
 def static_css(filename):

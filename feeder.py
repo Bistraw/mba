@@ -18,20 +18,47 @@ def create_source_from_file(file_path : str) -> Source:
 
     s.id = SourceService.create_source(conn, s, False)
 
-    data = ingester.ingest(file_path)
-
-    for i,d in enumerate(data):
-        sf = SourceFrame()
-
-        sf.source_id = s.id
-        sf.color = d
-        sf.frame_index = i
-
-        sf.id = SourceService.create_source_frame(conn, s.id, sf, False)
+    ingest_source_frames(conn, s.id, file_path)
 
     conn.commit()
 
     return s
+
+def ingest_source_frames(conn, source_id : int, file_path : str):
+    # stores the average and brightest color of every frame, the caller commits
+    avg_colors, bright_colors = ingester.ingest_frames(file_path)
+
+    frames = []
+
+    for idx, (avg, bright) in enumerate(zip(avg_colors, bright_colors)):
+        sf = SourceFrame()
+
+        sf.source_id = source_id
+        sf.color = avg
+        sf.bright_color = bright
+        sf.frame_index = idx
+
+        frames.append(sf)
+
+    SourceService.create_source_frames(conn, source_id, frames, False)
+
+def backfill_source_bright(conn, source_id : int, file_path : str):
+    # sources ingested before the brightest color existed only have the average, fill the rest in
+    print(f"backfilling brightest colors for source id: {source_id}, path: {file_path}")
+
+    bright_colors = ingester.ingest_brightest(file_path)
+
+    frame_count = SourceService.get_source_frame_count(conn, source_id)
+
+    if len(bright_colors) != frame_count:
+        print(f"frame count mismatch (db: {frame_count}, file: {len(bright_colors)}), the file may be a different release. Skipping.")
+        return
+
+    SourceService.update_source_frames_bright(conn, source_id, bright_colors, False)
+
+    conn.commit()
+
+    print(f"brightest colors stored for source id: {source_id}")
 
 def feed_jellyfin_items():
     url = f"http://localhost:8096/items?apikey={environment.JELLY_APIKEY}&recursive=true&hasImdbId=true&includeItemTypes=Movie&fields=ProviderIds,Path"
@@ -89,8 +116,14 @@ def feed_jellyfin_items():
                 print(f"File does not exist: {s.path}")
                 continue
 
-            if SourceService.do_source_exists(conn, "", s.imdb_id):   
-                print(f"source already exists, imdb_id matched: {s.imdb_id}")
+            existing_id = SourceService.get_source_id_by_imdb_id(conn, s.imdb_id)
+
+            if existing_id is not None:
+                if SourceService.do_source_has_bright(conn, existing_id):
+                    print(f"source already exists, imdb_id matched: {s.imdb_id}")
+                else:
+                    backfill_source_bright(conn, existing_id, s.path)
+
                 continue
             
             s.sha512 = hash.get_audio_hash_sha512(s.path)
@@ -104,17 +137,8 @@ def feed_jellyfin_items():
             print(f"source created. imdb_id: {s.imdb_id}, path: {s.path}, id: {s.id}, name: {s.metadata_name}, year: {s.metadata_year}, sha512: {s.sha512}")
             print(f"ingesting source frames for source id: {s.id}")
 
-            data = ingester.ingest(s.path)
+            ingest_source_frames(conn, s.id, s.path)
 
-            for i,d in enumerate(data):
-                sf = SourceFrame()
-
-                sf.source_id = s.id
-                sf.color = d
-                sf.frame_index = i
-
-                sf.id = SourceService.create_source_frame(conn, s.id, sf, False)
-            
             conn.commit()
 
         except Exception as e:
