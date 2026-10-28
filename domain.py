@@ -15,9 +15,66 @@ class SourceKind:
     UNKNOWN : int = 0
     MOVIE : int = 1
 
+class RenderKind:
+    # the shape a barcode is drawn as, see render.py
+    LINE : int = 0      # vertical strips, left to right
+    CIRCLE : int = 1    # wedges around a circle, clockwise
+    ROWS : int = 2      # horizontal strips, top to bottom
+    RINGS : int = 3     # concentric rings, from the center out
+    SPIRAL : int = 4    # a band winding outwards
+    MOSAIC : int = 5    # tiles read left to right, top to bottom
+    WAVE : int = 6      # vertical bars as tall as the color is bright
+
+    # (kind, name, description) in the order the ui shows them
+    ALL = [
+        (LINE, "line", "vertical strips, left to right"),
+        (CIRCLE, "circle", "wedges around a circle, clockwise"),
+        (ROWS, "rows", "horizontal strips, top to bottom"),
+        (RINGS, "rings", "concentric rings from the center out, like a tree"),
+        (SPIRAL, "spiral", "a band winding outwards from the center"),
+        (MOSAIC, "mosaic", "tiles read left to right, top to bottom"),
+        (WAVE, "wave", "bars as tall as each moment is bright"),
+    ]
+
+    # shapes drawn around a center, they use radius / radius_inner
+    RADIAL = [CIRCLE, RINGS, SPIRAL]
+
+    @classmethod
+    def is_valid(cls, kind : int):
+        return any(k == kind for k, _, _ in cls.ALL)
+
 class ColorMode:
-    AVERAGE : int = 0   # mean color of the frame
-    BRIGHTEST : int = 1 # brightest pixel of the frame (see ingester.py)
+    # how a frame is turned into a single color, computed by ingester.py
+    AVERAGE : int = 0       # mean color of the frame
+    BRIGHTEST : int = 1     # brightest pixel of the frame
+    VIVID : int = 2         # most saturated (highest chroma) pixel
+    DOMINANT : int = 3      # most frequent color, quantized to 512 bins
+    MEDIAN : int = 4        # per channel median, ignores extreme regions
+    CENTER : int = 5        # mean of the central third of the frame
+    HIGHLIGHTS : int = 6    # mean of the brightest 10% of the pixels
+    HUE : int = 7           # hue of the average color at full saturation / value
+    LUMINANCE : int = 8     # brightness of the average color, as gray
+
+    # (mode, name, description) in the order the ui shows them
+    ALL = [
+        (AVERAGE, "average", "mean color of each frame"),
+        (BRIGHTEST, "brightest", "brightest pixel of each frame"),
+        (VIVID, "vivid", "most saturated pixel of each frame"),
+        (DOMINANT, "dominant", "most frequent color of each frame"),
+        (MEDIAN, "median", "median color, ignores extreme regions"),
+        (CENTER, "center", "mean of the center of the frame, where the subject usually is"),
+        (HIGHLIGHTS, "highlights", "mean of the brightest 10% of each frame"),
+        (HUE, "hue", "pure hue of the average color"),
+        (LUMINANCE, "luminance", "brightness of each frame in grayscale"),
+    ]
+
+    # average and brightest live in SourceFrame, every other mode in SourceColors
+    FRAME_MODES = [AVERAGE, BRIGHTEST]
+    BLOB_MODES = [VIVID, DOMINANT, MEDIAN, CENTER, HIGHLIGHTS, HUE, LUMINANCE]
+
+    @classmethod
+    def is_valid(cls, mode : int):
+        return any(m == mode for m, _, _ in cls.ALL)
 
 class Source:
     def __init__(self):
@@ -228,6 +285,57 @@ class SourceService:
         cur.execute(sql, [source_id])
 
         return cur.fetchone()[0] == 0
+
+    @classmethod
+    def set_source_colors(cls, conn : sqlite3.Connection, source_id : int, color_mode : int, colors : bytes, do_commit : bool = True):
+        # colors: 3 bytes (r, g, b) per frame, for one of ColorMode.BLOB_MODES
+        cur = conn.cursor()
+
+        sql = "INSERT OR REPLACE INTO SourceColors(source_id, color_mode, colors) VALUES (?, ?, ?);"
+
+        cur.execute(sql, [source_id, color_mode, colors])
+
+        if do_commit:
+            conn.commit()
+
+    @classmethod
+    def get_source_colors(cls, conn : sqlite3.Connection, source_id : int, color_mode : int):
+        # one color per frame for the given mode, None when the source has no data for it yet
+        if color_mode in ColorMode.FRAME_MODES:
+            colors = [f.get_color(color_mode) for f in cls.get_source_frames(conn, source_id)]
+
+            return None if any(c is None for c in colors) else colors
+
+        cur = conn.cursor()
+
+        cur.execute("SELECT colors FROM SourceColors WHERE source_id = ? AND color_mode = ?;", [source_id, color_mode])
+
+        row = cur.fetchone()
+
+        if not row:
+            return None
+
+        raw = row[0]
+
+        return [Color(raw[i], raw[i + 1], raw[i + 2]) for i in range(0, len(raw) - 2, 3)]
+
+    @classmethod
+    def get_missing_color_modes(cls, conn : sqlite3.Connection, source_id : int):
+        # color modes this source still needs a backfill for
+        missing = []
+
+        if not cls.do_source_has_bright(conn, source_id):
+            missing.append(ColorMode.BRIGHTEST)
+
+        cur = conn.cursor()
+
+        cur.execute("SELECT color_mode FROM SourceColors WHERE source_id = ?;", [source_id])
+
+        stored = {row[0] for row in cur.fetchall()}
+
+        missing.extend(m for m in ColorMode.BLOB_MODES if m not in stored)
+
+        return missing
 
     @classmethod
     def get_source_id_by_imdb_id(cls, conn : sqlite3.Connection, imdb_id : str):

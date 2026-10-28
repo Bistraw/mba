@@ -25,12 +25,12 @@ def create_source_from_file(file_path : str) -> Source:
     return s
 
 def ingest_source_frames(conn, source_id : int, file_path : str):
-    # stores the average and brightest color of every frame, the caller commits
-    avg_colors, bright_colors = ingester.ingest_frames(file_path)
+    # stores every color mode of every frame, the caller commits
+    colors = ingester.ingest_colors(file_path)
 
     frames = []
 
-    for idx, (avg, bright) in enumerate(zip(avg_colors, bright_colors)):
+    for idx, (avg, bright) in enumerate(zip(ingester.to_colors(colors[ColorMode.AVERAGE]), ingester.to_colors(colors[ColorMode.BRIGHTEST]))):
         sf = SourceFrame()
 
         sf.source_id = source_id
@@ -42,23 +42,31 @@ def ingest_source_frames(conn, source_id : int, file_path : str):
 
     SourceService.create_source_frames(conn, source_id, frames, False)
 
-def backfill_source_bright(conn, source_id : int, file_path : str):
-    # sources ingested before the brightest color existed only have the average, fill the rest in
-    print(f"backfilling brightest colors for source id: {source_id}, path: {file_path}")
+    for mode in ColorMode.BLOB_MODES:
+        SourceService.set_source_colors(conn, source_id, mode, colors[mode].tobytes(), False)
 
-    bright_colors = ingester.ingest_brightest(file_path)
+def backfill_source_colors(conn, source_id : int, file_path : str, missing_modes : list[int]):
+    # sources ingested before a color mode existed don't have it, fill those in
+    print(f"backfilling color modes {missing_modes} for source id: {source_id}, path: {file_path}")
+
+    colors = ingester.ingest_colors(file_path)
 
     frame_count = SourceService.get_source_frame_count(conn, source_id)
+    file_count = len(colors[ColorMode.AVERAGE])
 
-    if len(bright_colors) != frame_count:
-        print(f"frame count mismatch (db: {frame_count}, file: {len(bright_colors)}), the file may be a different release. Skipping.")
+    if file_count != frame_count:
+        print(f"frame count mismatch (db: {frame_count}, file: {file_count}), the file may be a different release. Skipping.")
         return
 
-    SourceService.update_source_frames_bright(conn, source_id, bright_colors, False)
+    for mode in missing_modes:
+        if mode == ColorMode.BRIGHTEST:
+            SourceService.update_source_frames_bright(conn, source_id, ingester.to_colors(colors[mode]), False)
+        else:
+            SourceService.set_source_colors(conn, source_id, mode, colors[mode].tobytes(), False)
 
     conn.commit()
 
-    print(f"brightest colors stored for source id: {source_id}")
+    print(f"color modes stored for source id: {source_id}")
 
 def feed_jellyfin_items():
     url = f"http://localhost:8096/items?apikey={environment.JELLY_APIKEY}&recursive=true&hasImdbId=true&includeItemTypes=Movie&fields=ProviderIds,Path"
@@ -119,10 +127,12 @@ def feed_jellyfin_items():
             existing_id = SourceService.get_source_id_by_imdb_id(conn, s.imdb_id)
 
             if existing_id is not None:
-                if SourceService.do_source_has_bright(conn, existing_id):
-                    print(f"source already exists, imdb_id matched: {s.imdb_id}")
+                missing_modes = SourceService.get_missing_color_modes(conn, existing_id)
+
+                if missing_modes:
+                    backfill_source_colors(conn, existing_id, s.path, missing_modes)
                 else:
-                    backfill_source_bright(conn, existing_id, s.path)
+                    print(f"source already exists, imdb_id matched: {s.imdb_id}")
 
                 continue
             

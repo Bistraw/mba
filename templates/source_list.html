@@ -22,12 +22,15 @@
                 <p>{{ sources|length }} {{ 'source' if sources|length == 1 else 'sources' }}</p>
             </div>
 
-            <div class="segmented" role="radiogroup" aria-label="color">
-                <input type="radio" name="color_mode" id="cm-0" value="0" checked>
-                <label for="cm-0"><i class="icon icon-contrast"></i> average</label>
-                <input type="radio" name="color_mode" id="cm-1" value="1">
-                <label for="cm-1"><i class="icon icon-star"></i> brightest</label>
-            </div>
+            <label class="mode-picker">
+                <i class="icon icon-contrast"></i>
+                <span>color</span>
+                <select id="color_mode">
+                    {% for mode, name, description in color_modes %}
+                    <option value="{{ mode }}" title="{{ description }}">{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
         </div>
 
         {% if sources %}
@@ -73,16 +76,16 @@
         }
 
         // switching the color mode refreshes every thumbnail and the links to the render page
-        for (const radio of document.querySelectorAll('input[name="color_mode"]')) {
-            radio.addEventListener('change', () => {
-                for (const card of document.querySelectorAll('.movie-card')) {
-                    const img = card.querySelector('img');
-                    img.classList.add('loading');
-                    img.src = img.src.replace(/color_mode=\d/, `color_mode=${radio.value}`);
-                    card.href = card.href.replace(/color_mode=\d/, `color_mode=${radio.value}`);
-                }
-            });
-        }
+        document.getElementById('color_mode').addEventListener('change', (e) => {
+            const mode = e.target.value;
+
+            for (const card of document.querySelectorAll('.movie-card')) {
+                const img = card.querySelector('img');
+                img.classList.add('loading');
+                img.src = img.src.replace(/color_mode=\d+/, `color_mode=${mode}`);
+                card.href = card.href.replace(/color_mode=\d+/, `color_mode=${mode}`);
+            }
+        });
     </script>
 </body>
 </html>

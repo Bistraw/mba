@@ -111,14 +111,14 @@ def render(data : list[Color], height : int = 200, strip_width : int = 1, color_
 def render_force_max_lines(data : list[Color], height : int, strip_width : int, max_strips : int) -> Image:
     n = len(data)
 
-    colors_per_strip = int(n / max_strips)
+    colors_per_strip = max(1, int(n / max_strips)) # fewer frames than strips -> one frame per strip
 
     return render(data, height, strip_width, colors_per_strip)
 
 def render_force_max_lines_force_size(data : list[Color], height : int, strip_width : int, max_strips : int, width : int) -> Image:
     n = len(data)
 
-    colors_per_strip = int(n / max_strips)
+    colors_per_strip = max(1, int(n / max_strips)) # fewer frames than strips -> one frame per strip
 
     img = render(data, height, strip_width, colors_per_strip)
 
@@ -241,6 +241,127 @@ def render_circle(data : list[Color], rad : int = 250, rad_inner: int = 20, max_
             b = 0
     
     img = img.resize((width, height))
+
+    return img
+
+def get_strip_colors(data : list[Color], max_strips : int) -> list[Color]:
+    # averages consecutive frames so there are at most max_strips colors, in order
+    n = len(data)
+
+    strips = max(1, min(n, max_strips))
+
+    return [get_color_avg(data[s * n // strips : (s + 1) * n // strips]) for s in range(strips)] if n else []
+
+def get_luma(c : Color):
+    # Rec. 709 brightness, same weights as the ingester
+    return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b
+
+def render_rows(data : list[Color], max_strips : int = 1000, width : int = 500, height : int = 500):
+    # horizontal strips, the first frame on top
+    colors = get_strip_colors(data, max_strips)
+
+    img = Image.new(mode="RGB", size=(1, len(colors)))
+
+    img.putdata([c.as_tuple() for c in colors])
+
+    return img.resize((width, height), Image.NEAREST)
+
+def render_rings(data : list[Color], rad : int = 250, rad_inner : int = 20, max_strips : int = 0, width : int = 500, height : int = 500):
+    # concentric rings, the first frame in the center and the last one outside
+    colors = get_strip_colors(data, max_strips or len(data))
+
+    img = Image.new(mode="RGBA", size=(rad * 2, rad * 2))
+
+    draw = ImageDraw.Draw(img)
+
+    step = (rad - rad_inner) / len(colors)
+
+    # outside in, each disc covers the center of the previous one leaving a ring
+    for i in reversed(range(len(colors))):
+        r = rad_inner + (i + 1) * step
+
+        draw.ellipse((rad - r, rad - r, rad + r, rad + r), fill=colors[i].as_tuple())
+
+    if rad_inner > 0:
+        draw.ellipse((rad - rad_inner, rad - rad_inner, rad + rad_inner, rad + rad_inner), fill=(0, 0, 0, 0))
+
+    return img.resize((width, height))
+
+def render_spiral(data : list[Color], rad : int = 250, rad_inner : int = 20, max_strips : int = 0, width : int = 500, height : int = 500, turns : int = 6):
+    # a band winding clockwise from the top, the first frame in the center
+    colors = get_strip_colors(data, max_strips or len(data))
+    n = len(colors)
+
+    img = Image.new(mode="RGBA", size=(rad * 2, rad * 2))
+
+    draw = ImageDraw.Draw(img)
+
+    turns = max(1, turns)
+    band = (rad - rad_inner) / (turns + 1)     # width of the band, the last loop ends right at rad
+    total = turns * 360                         # degrees covered by the whole movie
+    steps = max(1, math.ceil(total / n / 3))    # an edge point every ~3 degrees so long strips stay curved
+
+    def edge(angle, outer):
+        # the inner edge of the band grows one band width per turn
+        r = rad_inner + band * angle / 360 + (band if outer else 0)
+
+        return calc_circ_point(rad, rad, r, angle - 90)
+
+    for i, c in enumerate(colors):
+        a0 = total * i / n
+        a1 = total * (i + 1) / n
+
+        angles = [a0 + (a1 - a0) * k / steps for k in range(steps + 1)]
+
+        polygon = [edge(a, True) for a in angles] + [edge(a, False) for a in reversed(angles)]
+
+        draw.polygon(polygon, fill=c.as_tuple())
+
+    return img.resize((width, height))
+
+def render_mosaic(data : list[Color], max_strips : int = 1000, width : int = 500, height : int = 500):
+    # one tile per strip, read left to right and top to bottom, as square as the size allows
+    colors = get_strip_colors(data, max_strips)
+    n = len(colors)
+
+    cols = max(1, round(math.sqrt(n * width / height)))
+    rows = math.ceil(n / cols)
+
+    tile_w = width / cols
+    tile_h = height / rows
+    gap = int(min(tile_w, tile_h) * 0.1)   # thin dark gap between tiles, none when they are tiny
+
+    img = Image.new(mode="RGBA", size=(width, height))
+
+    draw = ImageDraw.Draw(img)
+
+    for i, c in enumerate(colors):
+        x = (i % cols) * tile_w
+        y = (i // cols) * tile_h
+
+        draw.rectangle((int(x), int(y), int(x + tile_w) - 1 - gap, int(y + tile_h) - 1 - gap), fill=c.as_tuple())
+
+    return img
+
+def render_wave(data : list[Color], max_strips : int = 1000, width : int = 500, height : int = 500):
+    # vertical bars centered on the middle, as tall as the strip is bright (the brightest one fills the height)
+    colors = get_strip_colors(data, max_strips)
+    n = len(colors)
+
+    lumas = [get_luma(c) for c in colors]
+    top = max(lumas) or 1
+
+    img = Image.new(mode="RGBA", size=(width, height))
+
+    draw = ImageDraw.Draw(img)
+
+    for i, (c, y) in enumerate(zip(colors, lumas)):
+        x0 = int(i * width / n)
+        x1 = max(x0, int((i + 1) * width / n) - 1)
+
+        h = height * (0.06 + 0.94 * y / top)   # dark moments keep a sliver so the bar stays visible
+
+        draw.rectangle((x0, int((height - h) / 2), x1, int((height + h) / 2)), fill=c.as_tuple())
 
     return img
 
@@ -383,7 +504,8 @@ def render_frame(text_left : str, text_right : str, framed_img : Image, backgrou
     off_w = padding
     off_h = padding + header_height
 
-    img.paste(c_img, (off_w, off_h))
+    # shapes with transparent areas (circle, rings...) let the frame background show through
+    img.paste(c_img, (off_w, off_h), c_img if c_img.mode == "RGBA" else None)
 
     draw = ImageDraw.Draw(img)
 

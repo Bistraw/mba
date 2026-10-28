@@ -174,6 +174,113 @@
     color: var(--text-muted);
 }
 
+/* color modes: each option previews this source's barcode in that mode */
+.color-group {
+    margin-top: 20px;
+}
+
+.color-group > span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.swatches {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+}
+
+.swatches input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.swatch {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 6px 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+}
+
+.swatch:hover {
+    border-color: #3a3a43;
+}
+
+.swatch img {
+    display: block;
+    width: 100%;
+    height: 26px;
+    border-radius: 4px;
+    background: var(--surface-2);
+    object-fit: fill;
+}
+
+.swatch.missing img {
+    visibility: hidden;
+    background: repeating-linear-gradient(135deg, var(--surface-2) 0 6px, var(--bg) 6px 12px);
+}
+
+.swatch.missing {
+    position: relative;
+}
+
+.swatch.missing::before {
+    /* the hidden img keeps the size, this draws the "no data" stripes over it */
+    content: "no data yet";
+    position: absolute;
+    inset: 6px 6px auto;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    border-radius: 4px;
+    background: repeating-linear-gradient(135deg, var(--surface-2) 0 6px, var(--bg) 6px 12px);
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+/* shapes reuse the swatch look with a taller preview */
+.shapes {
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+}
+
+.shape img {
+    height: 64px;
+    background: #050506;
+    object-fit: contain;
+}
+
+.shape.missing::before {
+    height: 64px;
+}
+
+.swatch-name {
+    padding-left: 2px;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.swatches input:checked + .swatch {
+    border-color: var(--accent);
+    background: var(--surface-2);
+}
+
+.swatches input:checked + .swatch .swatch-name {
+    color: var(--text);
+}
+
+.swatches input:focus-visible + .swatch {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
 .numbers {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
@@ -189,9 +296,8 @@
     margin-top: 20px;
 }
 
-/* fields that only make sense for one render kind */
-.controls[data-kind="0"] .only-circle,
-.controls[data-kind="1"] .only-line {
+/* fields the selected shape doesn't use (see syncFields) */
+.field[hidden] {
     display: none;
 }
 

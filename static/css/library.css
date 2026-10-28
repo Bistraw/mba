@@ -20,6 +20,43 @@
     color: var(--text-muted);
 }
 
+.mode-picker {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    height: 38px;
+    padding: 0 6px 0 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--bg);
+    color: var(--text-muted);
+    font-size: 12px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.mode-picker .icon {
+    color: var(--accent);
+}
+
+.mode-picker select {
+    height: 28px;
+    padding: 0 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--text);
+    font: 600 13px var(--font-body);
+    letter-spacing: 0;
+    text-transform: none;
+    cursor: pointer;
+}
+
+.mode-picker select:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
 .library {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

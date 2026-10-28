@@ -48,29 +48,45 @@
             </div>
         </section>
 
-        <form class="controls" id="params" data-kind="{{ kind }}" autocomplete="off" onsubmit="event.preventDefault(); render();">
+        <form class="controls" id="params" autocomplete="off" onsubmit="event.preventDefault(); render();">
             <div class="controls-head"><i class="icon icon-gear"></i> parameters</div>
 
-            <div class="controls-row">
-                <div class="control-group">
-                    <span>shape</span>
-                    <div class="segmented">
-                        <input type="radio" name="kind" id="kind-0" value="0" {% if kind == 0 %}checked{% endif %}>
-                        <label for="kind-0"><i class="icon icon-line"></i> line</label>
-                        <input type="radio" name="kind" id="kind-1" value="1" {% if kind == 1 %}checked{% endif %}>
-                        <label for="kind-1"><i class="icon icon-circle"></i> circle</label>
-                    </div>
+            <div class="control-group">
+                <span><i class="icon icon-circle"></i> shape</span>
+                <div class="swatches shapes">
+                    {% for k, name, description in render_kinds %}
+                    {% set radial = k in radial_kinds %}
+                    <input type="radio" name="kind" id="kind-{{ k }}" value="{{ k }}" {% if kind == k %}checked{% endif %}>
+                    <label class="swatch shape" for="kind-{{ k }}" title="{{ description }}">
+                        <img alt="" loading="lazy" data-preview
+                            src="/api/source/{{ source.id }}/render?width={{ 64 if radial else 96 }}&height=64&strip_width=1&max_strips=120&kind={{ k }}&radius=96&radius_inner=12&turns=4&color_mode={{ color_mode }}">
+                        <span class="swatch-name shape-name">{{ name }}</span>
+                    </label>
+                    {% endfor %}
                 </div>
+            </div>
 
-                <div class="control-group">
-                    <span>color</span>
-                    <div class="segmented">
-                        <input type="radio" name="color_mode" id="cm-0" value="0" {% if color_mode == 0 %}checked{% endif %}>
-                        <label for="cm-0"><i class="icon icon-contrast"></i> average</label>
-                        <input type="radio" name="color_mode" id="cm-1" value="1" {% if color_mode == 1 %}checked{% endif %}>
-                        <label for="cm-1"><i class="icon icon-star"></i> brightest</label>
-                    </div>
+            <div class="control-group color-group">
+                <span><i class="icon icon-contrast"></i> color</span>
+                <div class="swatches">
+                    {% for mode, name, description in color_modes %}
+                    <input type="radio" name="color_mode" id="cm-{{ mode }}" value="{{ mode }}" {% if color_mode == mode %}checked{% endif %}>
+                    <label class="swatch" for="cm-{{ mode }}" title="{{ description }}">
+                        <img alt="" loading="lazy" src="/api/source/{{ source.id }}/render?width=200&height=28&strip_width=1&max_strips=200&kind=0&color_mode={{ mode }}">
+                        <span class="swatch-name">{{ name }}</span>
+                    </label>
+                    {% endfor %}
                 </div>
+            </div>
+
+            <div class="numbers">
+                <label class="field"><span>width</span><input type="number" name="width" value="{{ width }}" min="10" max="4200"></label>
+                <label class="field"><span>height</span><input type="number" name="height" value="{{ height }}" min="10" max="4200"></label>
+                <label class="field" data-kinds="0"><span>strip width</span><input type="number" name="strip_width" value="{{ strip_width }}" min="1" max="100"></label>
+                <label class="field"><span>max strips</span><input type="number" name="max_strips" value="{{ max_strips }}" min="1" max="10000"></label>
+                <label class="field" data-kinds="{{ radial_kinds|join(',') }}"><span>radius</span><input type="number" name="radius" value="{{ radius }}" min="1" max="10000"></label>
+                <label class="field" data-kinds="{{ radial_kinds|join(',') }}"><span>inner radius</span><input type="number" name="radius_inner" value="{{ radius_inner }}" min="0" max="10000"></label>
+                <label class="field" data-kinds="4"><span>turns</span><input type="number" name="turns" value="{{ turns }}" min="1" max="100"></label>
 
                 <div class="control-group">
                     <span>frame</span>
@@ -81,15 +97,6 @@
                         <label for="f-1"><i class="icon icon-frame"></i> titled</label>
                     </div>
                 </div>
-            </div>
-
-            <div class="numbers">
-                <label class="field"><span>width</span><input type="number" name="width" value="{{ width }}" min="10" max="4200"></label>
-                <label class="field"><span>height</span><input type="number" name="height" value="{{ height }}" min="10" max="4200"></label>
-                <label class="field only-line"><span>strip width</span><input type="number" name="strip_width" value="{{ strip_width }}" min="1" max="100"></label>
-                <label class="field"><span>max strips</span><input type="number" name="max_strips" value="{{ max_strips }}" min="1" max="10000"></label>
-                <label class="field only-circle"><span>radius</span><input type="number" name="radius" value="{{ radius }}" min="1" max="10000"></label>
-                <label class="field only-circle"><span>inner radius</span><input type="number" name="radius_inner" value="{{ radius_inner }}" min="1" max="10000"></label>
             </div>
 
             <div class="controls-actions">
@@ -125,8 +132,8 @@
 
         function updateCaption() {
             const p = new FormData(form);
-            const shape = p.get('kind') === '1' ? 'circle' : 'line';
-            const color = p.get('color_mode') === '1' ? 'brightest' : 'average';
+            const shape = form.querySelector('input[name="kind"]:checked + label .shape-name').textContent;
+            const color = form.querySelector('input[name="color_mode"]:checked + label .swatch-name').textContent;
 
             document.getElementById('caption').textContent =
                 `${p.get('width')}×${p.get('height')} · ${shape} · ${p.get('max_strips')} strips · ${color}`;
@@ -168,13 +175,42 @@
             if (img.naturalWidth === 0) stage.classList.add('error');
         }
 
-        // segmented options render right away, numbers wait for the render button
+        // only show the number fields the selected shape uses (data-kinds="1,3,4")
+        function syncFields() {
+            const kind = new FormData(form).get('kind');
+
+            for (const field of form.querySelectorAll('[data-kinds]')) {
+                field.hidden = !field.dataset.kinds.split(',').includes(kind);
+            }
+        }
+
+        // shape previews follow the selected color mode
+        function syncPreviews() {
+            const mode = new FormData(form).get('color_mode');
+
+            for (const preview of form.querySelectorAll('img[data-preview]')) {
+                preview.src = preview.src.replace(/color_mode=\d+/, `color_mode=${mode}`);
+            }
+        }
+
+        // shapes, colors and frame render right away, numbers wait for the render button
         for (const radio of form.querySelectorAll('input[type="radio"]')) {
             radio.addEventListener('change', () => {
-                form.dataset.kind = new FormData(form).get('kind');
+                if (radio.name === 'kind') syncFields();
+                if (radio.name === 'color_mode') syncPreviews();
                 render();
             });
         }
+
+        // previews of modes this source has no data for yet get a placeholder
+        for (const preview of form.querySelectorAll('.swatch img, .shape img')) {
+            preview.addEventListener('load', () => preview.parentElement.classList.remove('missing'));
+            preview.addEventListener('error', () => preview.parentElement.classList.add('missing'));
+
+            if (preview.complete && preview.naturalWidth === 0) preview.parentElement.classList.add('missing');
+        }
+
+        syncFields();
 
         document.getElementById('download-button').href = img.getAttribute('src');
         updateCaption();
