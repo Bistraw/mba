@@ -57,6 +57,14 @@
                 <option value="false">none</option>
                 <option value="true">default</option>
             </select>
+            <label for="fi_enhancement_color">color enhance: </label>
+            <input id="fi_enhancement_color" type="number" step="0.01" min="-2" max="2" value="{{fi_enhancement_color}}"/>
+            <label for="fi_enhancement_contrast">contrast enhance: </label>
+            <input id="fi_enhancement_contrast" type="number" step="0.01" min="-2" max="2" value="{{fi_enhancement_contrast}}"/>
+            <label for="fi_enhancement_brightness">brightness enhance: </label>
+            <input id="fi_enhancement_brightness" type="number" step="0.01" min="-2" max="2" value="{{fi_enhancement_brightness}}"/>
+            <label for="fi_enhancement_sharpness">sharpness enhance: </label>
+            <input id="fi_enhancement_sharpness" type="number" step="0.01" min="-2" max="2" value="{{fi_enhancement_sharpness}}"/>
 
             <input type="submit" value="render">
         </div>
@@ -91,15 +99,32 @@
             const kind = document.getElementById('kind').value;
             const radius = document.getElementById('radius').value;
             const radius_inner = document.getElementById('radius_inner').value;
+            const fi_enhancement_color = document.getElementById('fi_enhancement_color').value;
+            const fi_enhancement_contrast = document.getElementById('fi_enhancement_contrast').value;
+            const fi_enhancement_brightness = document.getElementById('fi_enhancement_brightness').value;
+            const fi_enhancement_sharpness = document.getElementById('fi_enhancement_sharpness').value;
             const f = document.getElementById('f').value;
 
             const img = document.getElementById('source-render');
             const btn = document.getElementById('download-button');
             const lbl = document.getElementById('mb-param-lbl')
 
-            let url = `/api/source/{{ source.id }}/render?height=${height}&width=${width}&strip_width=${strip_width}&max_strips=${max_strips}&kind=${kind}&radius=${radius}&radius_inner=${radius_inner}&f=${f == 'true'}`;
+            let url = [`/api/source/{{ source.id }}/render`,
+                `?height=${height}`,
+                `&width=${width}`,
+                `&strip_width=${strip_width}`,
+                `&max_strips=${max_strips}`,
+                `&kind=${kind}`,
+                `&radius=${radius}`,
+                `&radius_inner=${radius_inner}`,
+                `&f=${f == 'true'}`,
+                `&fi_enhancement_color=${fi_enhancement_color}`,
+                `&fi_enhancement_contranst=${fi_enhancement_contrast}`,
+                `&fi_enhancement_brightness=${fi_enhancement_brightness}`,
+                `&fi_enhancement_sharpness=${fi_enhancement_sharpness}`        
+            ].join('');
 
-            console.log("url: ", url, "f: ", f);
+            //console.log("url: ", url, "f: ", f);
 
             img.src = url;
             btn.href = url;
