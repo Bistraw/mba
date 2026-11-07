@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MBA - Contributors</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png')}}">
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/theme.css') }}"/>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='css/contributors.css') }}"/>
+</head>
+<body>
+    <a href="{{ url_for('get_source_list') }}">[back to listing]</a>
+
+    <h2>Contributors</h2>
+
+    <div id="contibutors-list">
+        <div></div>
+        <div></div> 
+    </div>
+
+    <script>
+        async function init() {
+
+            let response = await fetch("https://api.github.com/repos/Wissenss/mba/contributors");
+            
+            let data = await response.json();
+            
+            data.forEach(c => {
+                // create the element
+                let item = document.createElement("a");
+                item.setAttribute("class", "contributors-list-item")
+                item.setAttribute("href", c.html_url);
+                item.setAttribute("target", "_blank");
+                
+                let img = document.createElement("img");
+                img.setAttribute("class", "contributors-list-item-img");
+                img.setAttribute("src", c.avatar_url);
+                item.appendChild(img);
+                
+                let name = document.createElement("span");
+                name.setAttribute("class", "contributors-list-item-name");
+                name.innerHTML = c.login;
+                item.appendChild(name);
+                
+                // append it to the list
+                let list = document.getElementById("contibutors-list")
+                
+                list.appendChild(item);
+            });
+        };
+
+        init();
+    </script>
+</body>
+</html>
