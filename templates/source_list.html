@@ -21,19 +21,20 @@
                 <h1>Library</h1>
                 <p>{{ sources|length }} {{ 'source' if sources|length == 1 else 'sources' }}</p>
             </div>
-
+            <!-- hidden for now
             <div class="segmented" role="radiogroup" aria-label="color">
                 <input type="radio" name="color_mode" id="cm-0" value="0" checked>
                 <label for="cm-0"><i class="icon icon-contrast"></i> average</label>
                 <input type="radio" name="color_mode" id="cm-1" value="1">
                 <label for="cm-1"><i class="icon icon-star"></i> brightest</label>
-            </div>
+            </div> 
+            -->
         </div>
 
         {% if sources %}
         <div class="library">
             {% for s in sources %}
-            <a class="movie-card" data-id="{{ s.id }}" href="/source/{{ s.id }}/render?height=500&width=900&strip_width=20&max_strips=1000&kind=0&radius=2000&radius_inner=200&f=false&color_mode=0">
+            <a class="movie-card" data-id="{{ s.id }}" href="/source/{{ s.id }}/render?height=500&width=900&strip_width=20&max_strips=1000&kind=0&radius=2000&radius_inner=200&f=false&color_mode=0&fi_enhancement_color=2.0&fi_enhancement_brightness=1.2">
                 <div class="film-edge"></div>
                 <div class="thumb">
                     <img class="loading" alt="barcode of {{ s.metadata_name }}" loading="lazy"

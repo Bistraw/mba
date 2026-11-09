@@ -32,7 +32,7 @@
             <div class="film-edge"></div>
             <div class="stage loading" id="stage">
                 <img id="source-render" alt="movie barcode of {{ source.metadata_name }}"
-                    src="/api/source/{{ source.id }}/render?height={{height}}&width={{width}}&strip_width={{strip_width}}&max_strips={{max_strips}}&kind={{kind}}&radius={{radius}}&radius_inner={{radius_inner}}&f={{ 'true' if f else 'false' }}&color_mode={{color_mode}}"/>
+                    src="/api/source/{{ source.id }}/render?height={{height}}&width={{width}}&strip_width={{strip_width}}&max_strips={{max_strips}}&kind={{kind}}&radius={{radius}}&radius_inner={{radius_inner}}&f={{ 'true' if f else 'false' }}&color_mode={{color_mode}}&fi_enhancement_color={{fi_enhancement_color}}&fi_enhancement_brightness={{fi_enhancement_brightness}}"/>
                 <div class="render-error">
                     Could not render this barcode. If you picked <strong>brightest</strong>, this source may still need a backfill: run <code>python feeder.py</code>.
                 </div>
@@ -62,7 +62,7 @@
                     </div>
                 </div>
 
-                <div class="control-group">
+                <!-- <div class="control-group">
                     <span>color</span>
                     <div class="segmented">
                         <input type="radio" name="color_mode" id="cm-0" value="0" {% if color_mode == 0 %}checked{% endif %}>
@@ -70,14 +70,14 @@
                         <input type="radio" name="color_mode" id="cm-1" value="1" {% if color_mode == 1 %}checked{% endif %}>
                         <label for="cm-1"><i class="icon icon-star"></i> brightest</label>
                     </div>
-                </div>
+                </div> -->
 
                 <div class="control-group">
                     <span>frame</span>
                     <div class="segmented">
-                        <input type="radio" name="f" id="f-0" value="false" {% if not f %}checked{% endif %}>
+                        <input type="radio" name="f_" id="f-0" value="0" {% if not f %}checked{% endif %}>
                         <label for="f-0">none</label>
-                        <input type="radio" name="f" id="f-1" value="true" {% if f %}checked{% endif %}>
+                        <input type="radio" name="f_" id="f-1" value="1" {% if f %}checked{% endif %}>
                         <label for="f-1"><i class="icon icon-frame"></i> titled</label>
                     </div>
                 </div>
@@ -90,6 +90,11 @@
                 <label class="field"><span>max strips</span><input type="number" name="max_strips" value="{{ max_strips }}" min="1" max="10000"></label>
                 <label class="field only-circle"><span>radius</span><input type="number" name="radius" value="{{ radius }}" min="1" max="10000"></label>
                 <label class="field only-circle"><span>inner radius</span><input type="number" name="radius_inner" value="{{ radius_inner }}" min="1" max="10000"></label>
+            </div>
+
+            <div class="filters">
+                <label class="field"><span>color</span><input type="number" name="fi_enhancement_color" value="{{ fi_enhancement_color }}" min="0.1" max="2.5" step="0.1"/></label>
+                <label class="field"><span>brightness</span><input type="number" name="fi_enhancement_brightness" value="{{ fi_enhancement_brightness }}" min="0.1" max="2.5" step="0.1"/></label>
             </div>
 
             <div class="controls-actions">
