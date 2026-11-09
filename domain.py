@@ -1,3 +1,4 @@
+from io import BytesIO
 import sqlite3
 
 import database
@@ -265,6 +266,27 @@ class SourceService:
             return rows[0]
         else:
             return 0
+
+    @classmethod
+    def get_source_thumbnail(cls, conn : sqlite3.Connection, source_id : int):
+        cur = conn.cursor()
+
+        cur.execute("SELECT thumbnail FROM Source WHERE id = ?", [source_id])
+
+        r = cur.fetchone()
+
+        if r[0]:
+            return BytesIO(r[0])
+
+        return None
+
+    @classmethod
+    def set_source_thumbnail(cls, conn : sqlite3.Connection, source_id : int, thumbanil : BytesIO):
+        cur = conn.cursor()
+
+        cur.execute("UPDATE Source SET thumbnail = ? WHERE id = ?", [thumbanil.getvalue(), source_id])
+
+        conn.commit()
 
 if __name__ == "__main__":
     conn = database.create_connection()
